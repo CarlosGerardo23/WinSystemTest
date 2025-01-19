@@ -89,7 +89,6 @@ namespace Gameplay.Movement.Reel
                 timeReducing += Time.deltaTime;
                 float progress = timeReducing / _reelStopDelay;
                 _currentSpeed = Mathf.Lerp(_maxSpeed, 0f, progress);
-                Debug.Log($"Reducing speed to {_currentSpeed}.");
                 yield return null;
             }
 

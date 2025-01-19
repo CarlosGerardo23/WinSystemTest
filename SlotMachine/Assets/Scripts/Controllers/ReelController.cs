@@ -11,19 +11,23 @@ namespace Gameplay.Controllers
     /// </summary>
     public class ReelController : MonoBehaviour
     {
-        [Tooltip("The object holder that have the reel items content")]
+        [Tooltip("The reel data collection asset.")]
+        [SerializeField] private ReelDataCollectionSO _reelDataCollection;
+        [Tooltip("The object holder that have the reel items content.")]
         [SerializeField] private GameObject _reelItemsContentHolder;
         [Tooltip("The maximum speed at which the reel can spin.")]
         [SerializeField] private float _maxSpeed = 0.5f;
 
         [Tooltip("The duration it takes for the reel to stop .")]
         [SerializeField] private float _reelStopDelay = 0.2f;
-          [Tooltip("The duration it takes for the reel to recenter after stopping.")]
+        [Tooltip("The duration it takes for the reel to recenter after stopping.")]
         [SerializeField] private float _reelRecenterDuration = 0.2f;
-
+        private int _currentItemIndex;
         private RectTransform[] _childReelItems;
         private bool _isSpinning;
         public ReelState CurrentReelState => _currentReelState;
+        public ReelDataCollectionSO ReelDataCollection => _reelDataCollection;
+        public GameObject ReelItemsContentHolder => _reelItemsContentHolder;
         /// <summary>
         /// List of ordered RectTransform components representing the runtime reel items.
         /// </summary>
@@ -43,12 +47,14 @@ namespace Gameplay.Controllers
         private void Awake()
         {
             _layoutGroup = _reelItemsContentHolder.GetComponent<VerticalLayoutGroup>();
+            _layoutGroup.enabled = false;
             CacheChildReelItems();
             PopulateReelItemsList();
-            _reelMovement = new ReelMovement(_childReelItems, _maxSpeed,_reelStopDelay, _reelRecenterDuration);
+            _reelMovement = new ReelMovement(_childReelItems, _maxSpeed, _reelStopDelay, _reelRecenterDuration);
             SetReelState(ReelState.Ready);
+            _currentItemIndex = _childReelItems.Length - 1;
+            SetInitialSprite();
         }
-
         private void Update()
         {
             if (_isSpinning)
@@ -80,6 +86,14 @@ namespace Gameplay.Controllers
                     _orderedRunTimeReelItems.Add(item);
             }
         }
+        public void SetInitialSprite()
+        {
+            for (int i = 0; i < _childReelItems.Length; i++)
+            {
+                _childReelItems[i].GetComponent<Image>().sprite = _reelDataCollection.GetItemVisual(i);
+                _childReelItems[i].GetComponent<Image>().SetNativeSize();
+            }
+        }
         #endregion
         #region Reel State Methods
         /// <summary>
@@ -91,7 +105,6 @@ namespace Gameplay.Controllers
             _currentReelState = newState;
             OnReelStateChanged();
         }
-
         /// <summary>
         /// Called when the reel state changes to handle state-specific behavior.
         /// </summary>
@@ -129,8 +142,6 @@ namespace Gameplay.Controllers
             RotateItems();
             AdjustFirstItemDistance();
         }
-
-
         /// <summary>
         /// Rotates the reel items to simulate spinning.
         /// </summary>
@@ -141,18 +152,29 @@ namespace Gameplay.Controllers
             _orderedRunTimeReelItems.Insert(0, lastItem);
             lastItem.anchoredPosition = _reelMovement.FirstAnchorPosition;
             lastItem.SetAsFirstSibling();
+            UpdateNextItemVisual();
         }
-
+        /// <summary>
+        /// Updates the visual representation of the next item in the reel.
+        /// </summary>
+        /// <remarks>
+        /// This method increments the current item index and updates the sprite of the first item
+        /// in the ordered runtime reel items collection to the visual representation of the new current item.
+        /// </remarks>
+        private void UpdateNextItemVisual()
+        {
+            _currentItemIndex = (_currentItemIndex + 1) % _reelDataCollection.ItemsCollectionLength;
+            _orderedRunTimeReelItems[0].GetComponent<Image>().sprite = _reelDataCollection.GetItemVisual(_currentItemIndex);
+            _orderedRunTimeReelItems[0].GetComponent<Image>().SetNativeSize();
+        }
         /// <summary>
         /// Adjusts the distance of the first reel item after rotation.
         /// </summary>
-
         private void AdjustFirstItemDistance()
         {
             _orderedRunTimeReelItems[0].anchoredPosition =
                 _reelMovement.CalculateFirstItemPosition(_orderedRunTimeReelItems[1].anchoredPosition);
         }
-
         /// <summary>
         /// Coroutine that handles the sequence of stopping the reel.
         /// </summary>
@@ -167,7 +189,6 @@ namespace Gameplay.Controllers
             _layoutGroup.enabled = true;
             SetReelState(ReelState.Finished);
         }
-
         /// <summary>
         /// Coroutine that centers the reel after it stops spinning.
         /// </summary>
