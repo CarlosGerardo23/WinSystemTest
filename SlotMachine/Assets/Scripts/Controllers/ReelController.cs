@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using Gameplay.Movement.Reel;
+using Data.ReelData;
+using Controllers;
 namespace Gameplay.Controllers
 {
 
@@ -23,15 +25,17 @@ namespace Gameplay.Controllers
         [Tooltip("The duration it takes for the reel to recenter after stopping.")]
         [SerializeField] private float _reelRecenterDuration = 0.2f;
         private int _currentItemIndex;
-        private RectTransform[] _childReelItems;
+        private ReelItemController[] _childReelItems;
         private bool _isSpinning;
         public ReelState CurrentReelState => _currentReelState;
         public ReelDataCollectionSO ReelDataCollection => _reelDataCollection;
         public GameObject ReelItemsContentHolder => _reelItemsContentHolder;
+        public ReelItemController[] ChildReelItems => _childReelItems;
+        public ReelItemController[] CurrentOrderChildItems => _reelItemsContentHolder.GetComponentsInChildren<ReelItemController>();
         /// <summary>
-        /// List of ordered RectTransform components representing the runtime reel items.
+        /// List of ordered ReelItemController components representing the runtime reel items.
         /// </summary>
-        private readonly List<RectTransform> _orderedRunTimeReelItems = new();
+        private readonly List<ReelItemController> _orderedRunTimeReelItems = new();
 
         /// <summary>
         /// The VerticalLayoutGroup component attached to the reel.
@@ -48,7 +52,7 @@ namespace Gameplay.Controllers
         {
             _layoutGroup = _reelItemsContentHolder.GetComponent<VerticalLayoutGroup>();
             _layoutGroup.enabled = false;
-            CacheChildReelItems();
+            _childReelItems = _reelItemsContentHolder.GetComponentsInChildren<ReelItemController>();
             PopulateReelItemsList();
             _reelMovement = new ReelMovement(_childReelItems, _maxSpeed, _reelStopDelay, _reelRecenterDuration);
             SetReelState(ReelState.Ready);
@@ -62,19 +66,7 @@ namespace Gameplay.Controllers
         }
         #endregion
         #region Initialization
-        /// <summary>
-        /// Caches the RectTransform components of the child reel items.
-        /// </summary>
-        private void CacheChildReelItems()
-        {
-            _childReelItems = new RectTransform[_reelItemsContentHolder.transform.childCount];
-            for (int i = 0; i < _reelItemsContentHolder.transform.childCount; i++)
-            {
-                Transform child = _reelItemsContentHolder.transform.GetChild(i);
-                if (child.TryGetComponent(out RectTransform rect))
-                    _childReelItems[i] = rect;
-            }
-        }
+
         /// <summary>
         /// Populates the ordered list of reel items.
         /// </summary>
@@ -86,13 +78,15 @@ namespace Gameplay.Controllers
                     _orderedRunTimeReelItems.Add(item);
             }
         }
+        /// <summary>
+        /// Sets the initial sprite for each child reel item by retrieving the corresponding item data
+        /// from the reel data collection and setting up the item.
+        /// </summary>
         public void SetInitialSprite()
         {
             for (int i = 0; i < _childReelItems.Length; i++)
-            {
-                _childReelItems[i].GetComponent<Image>().sprite = _reelDataCollection.GetItemVisual(i);
-                _childReelItems[i].GetComponent<Image>().SetNativeSize();
-            }
+                _childReelItems[i].GetComponent<ReelItemController>().SetUpItem(_reelDataCollection.GetItemData(i));
+
         }
         #endregion
         #region Reel State Methods
@@ -116,6 +110,9 @@ namespace Gameplay.Controllers
                     _layoutGroup.enabled = false;
                     break;
                 case ReelState.Spinning:
+                    foreach (var item in _childReelItems)
+                        item.ShowCombinationSuccess(false);
+
                     _reelMovement.StartSpinning();
                     _isSpinning = true;
                     break;
@@ -134,9 +131,9 @@ namespace Gameplay.Controllers
         private void HandleSpinning()
         {
             for (int i = 0; i < _childReelItems.Length; i++)
-                _childReelItems[i].anchoredPosition += _reelMovement.SpinDelta;
+                _childReelItems[i].RectTransform.anchoredPosition += _reelMovement.SpinDelta;
 
-            if (!_reelMovement.ShouldTransition(_orderedRunTimeReelItems[^2].anchoredPosition.y))
+            if (!_reelMovement.ShouldTransition(_orderedRunTimeReelItems[^2].RectTransform.anchoredPosition.y))
                 return;
 
             RotateItems();
@@ -147,11 +144,11 @@ namespace Gameplay.Controllers
         /// </summary>
         private void RotateItems()
         {
-            RectTransform lastItem = _orderedRunTimeReelItems[^1];
+            ReelItemController lastItem = _orderedRunTimeReelItems[^1];
             _orderedRunTimeReelItems.RemoveAt(_orderedRunTimeReelItems.Count - 1);
             _orderedRunTimeReelItems.Insert(0, lastItem);
-            lastItem.anchoredPosition = _reelMovement.FirstAnchorPosition;
-            lastItem.SetAsFirstSibling();
+            lastItem.RectTransform.anchoredPosition = _reelMovement.FirstAnchorPosition;
+            lastItem.transform.SetAsFirstSibling();
             UpdateNextItemVisual();
         }
         /// <summary>
@@ -164,16 +161,15 @@ namespace Gameplay.Controllers
         private void UpdateNextItemVisual()
         {
             _currentItemIndex = (_currentItemIndex + 1) % _reelDataCollection.ItemsCollectionLength;
-            _orderedRunTimeReelItems[0].GetComponent<Image>().sprite = _reelDataCollection.GetItemVisual(_currentItemIndex);
-            _orderedRunTimeReelItems[0].GetComponent<Image>().SetNativeSize();
+            _orderedRunTimeReelItems[0].SetUpItem(_reelDataCollection.GetItemData(_currentItemIndex));
         }
         /// <summary>
         /// Adjusts the distance of the first reel item after rotation.
         /// </summary>
         private void AdjustFirstItemDistance()
         {
-            _orderedRunTimeReelItems[0].anchoredPosition =
-                _reelMovement.CalculateFirstItemPosition(_orderedRunTimeReelItems[1].anchoredPosition);
+            _orderedRunTimeReelItems[0].RectTransform.anchoredPosition =
+                _reelMovement.CalculateFirstItemPosition(_orderedRunTimeReelItems[1].RectTransform.anchoredPosition);
         }
         /// <summary>
         /// Coroutine that handles the sequence of stopping the reel.

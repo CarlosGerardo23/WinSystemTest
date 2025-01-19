@@ -1,11 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
+using Controllers;
 namespace Gameplay.Movement.Reel
 {
-
-
     /// <summary>
     /// The <c>ReelMovement</c> class handles the movement and positioning of reel items in a slot machine game.
     /// </summary>
@@ -26,11 +24,12 @@ namespace Gameplay.Movement.Reel
         /// <param name="reelItems">The array of reel items.</param>
         /// <param name="maxSpeed">The maximum speed of the reel.</param>
         /// <param name="recenterDuration">The duration to recenter the reel.</param>
-        public ReelMovement(RectTransform[] reelItems, float maxSpeed, float reelStopDelay,float recenterDuration)
+        public ReelMovement(ReelItemController[] reelItems, float maxSpeed, float reelStopDelay,float recenterDuration)
         {
             _reelItemsAnchorPositionsList = new Vector2[reelItems.Length];
             CacheAnchorPositions(reelItems);
-            _distanceBetweenItems = Mathf.Abs(reelItems[0].anchoredPosition.y - reelItems[1].anchoredPosition.y);
+            _distanceBetweenItems = Mathf.Abs(reelItems[0].RectTransform.anchoredPosition.y
+             - reelItems[1].RectTransform.anchoredPosition.y);
             _maxSpeed = maxSpeed;
             _reelRecenterDuration = recenterDuration;
             _reelStopDelay = reelStopDelay;
@@ -41,10 +40,10 @@ namespace Gameplay.Movement.Reel
         /// </summary>
         /// <param name="reelItems">The array of reel items.</param>
 
-        private void CacheAnchorPositions(RectTransform[] reelItems)
+        private void CacheAnchorPositions(ReelItemController[] reelItems)
         {
             for (int i = 0; i < reelItems.Length; i++)
-                _reelItemsAnchorPositionsList[i] = reelItems[i].anchoredPosition;
+                _reelItemsAnchorPositionsList[i] = reelItems[i].RectTransform.anchoredPosition;
         }
 
         /// <summary>
@@ -99,25 +98,25 @@ namespace Gameplay.Movement.Reel
         /// </summary>
         /// <param name="reelItemsList">The list of reel items to recenter.</param>
         /// <returns>An enumerator for the recentering coroutine.</returns>
-        public IEnumerator CenterReelCoroutine(List<RectTransform> reelItemsList)
+        public IEnumerator CenterReelCoroutine(List<ReelItemController> reelItemsList)
         {
             float elapsedTime = 0f;
             Vector2[] startPositions = new Vector2[reelItemsList.Count];
 
             for (int i = 0; i < reelItemsList.Count; i++)
-                startPositions[i] = reelItemsList[i].anchoredPosition;
+                startPositions[i] = reelItemsList[i].RectTransform.anchoredPosition;
 
             while (elapsedTime < _reelRecenterDuration)
             {
                 elapsedTime += Time.deltaTime;
                 float t = elapsedTime / _reelRecenterDuration;
                 for (int i = 0; i < reelItemsList.Count; i++)
-                    reelItemsList[i].anchoredPosition = Vector2.Lerp(startPositions[i], _reelItemsAnchorPositionsList[i], t);
+                    reelItemsList[i].RectTransform.anchoredPosition = Vector2.Lerp(startPositions[i], _reelItemsAnchorPositionsList[i], t);
                 yield return null;
             }
 
             for (int i = 0; i < reelItemsList.Count; i++)
-                reelItemsList[i].anchoredPosition = _reelItemsAnchorPositionsList[i];
+                reelItemsList[i].RectTransform.anchoredPosition = _reelItemsAnchorPositionsList[i];
         }
     }
 }

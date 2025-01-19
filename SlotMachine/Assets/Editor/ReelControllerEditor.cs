@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEditor;
 using UnityEngine.UI;
 using Gameplay.Controllers;
-
+using Controllers;
 [CustomEditor(typeof(ReelController))]
 public class ReelControllerEditor : Editor
 {
@@ -25,14 +25,13 @@ public class ReelControllerEditor : Editor
         for (int i = 0; i < childCount; i++)
         {
             var child = holder.GetChild(i);
-            var img = child.GetComponent<Image>();
-            if (img != null && img.sprite == null)
+            var reelItem = child.GetComponent<ReelItemController>();
+            if (reelItem != null)
             {
-
-                Sprite newSprite = reelData.GetItemVisual(i);
-                img.sprite = newSprite;
-                img.SetNativeSize();
+                reelItem.InitItem();
+               reelItem.SetUpItem(reelData.GetItemData(i));
             }
+            
         }
 
 
