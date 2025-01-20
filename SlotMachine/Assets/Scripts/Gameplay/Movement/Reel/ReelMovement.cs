@@ -24,7 +24,7 @@ namespace Gameplay.Movement.Reel
         /// <param name="reelItems">The array of reel items.</param>
         /// <param name="maxSpeed">The maximum speed of the reel.</param>
         /// <param name="recenterDuration">The duration to recenter the reel.</param>
-        public ReelMovement(ReelItemController[] reelItems, float maxSpeed, float reelStopDelay,float recenterDuration)
+        public ReelMovement(ReelItemController[] reelItems, float maxSpeed, float reelStopDelay, float recenterDuration)
         {
             _reelItemsAnchorPositionsList = new Vector2[reelItems.Length];
             CacheAnchorPositions(reelItems);
@@ -43,7 +43,10 @@ namespace Gameplay.Movement.Reel
         private void CacheAnchorPositions(ReelItemController[] reelItems)
         {
             for (int i = 0; i < reelItems.Length; i++)
+            {
+                reelItems[i].InitItem();
                 _reelItemsAnchorPositionsList[i] = reelItems[i].RectTransform.anchoredPosition;
+            }
         }
 
         /// <summary>
